@@ -1,0 +1,2 @@
+# VerifyBibTeX
+This is the repository for the paper "VerifyBibTeX: A Tool for Detecting Inconsistencies in BibTeX Files". This version of the tool has been written in Golang. There is also a Docker container that uses Python: [VerifyBibTeX-OS](https://github.com/phimisci/verifybibtex-os)
