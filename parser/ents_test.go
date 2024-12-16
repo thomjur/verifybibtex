@@ -3,6 +3,8 @@ package parser
 
 import (
 	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -45,7 +47,6 @@ func TestCleanRawEntry(t *testing.T) {
 	
 		
 	`
-	fmt.Printf("%s", testCase3)
 	result3 := cleanRawEntry(testCase3)
 	expected3 := `@article{id1234,title={Drugs \% Comments},author={Jurczyk, Thomas},date={20.12.2023}}`
 	if result3 != expected3 {
@@ -99,5 +100,55 @@ func TestParseEntryType(t *testing.T) {
 	_, err4 := parseEntryType("article{id1234,author={Jurczyk, Thomas},date={20.12.2023}}")
 	if err4 == nil || expected6.Error() != err4.Error() {
 		t.Errorf("Expected '%#v', but got '%#v'", expected6, err4)
+	}
+}
+
+func TestParseFields(t *testing.T) {
+	entry1 := `{schmidt2024,
+  author       = {Schmidt, Anna and Müller, Bernd and {O'Connor}, Claire and García, Diego},
+  editor       = "Weber, Eva and {D'Amico}, Fabio",
+  title        = {Fortgeschrittene Datenanalyse (mit, = in dem Text) mit Python: Methoden und Anwendungen}, publisher    = {Technik Verlag}  ,
+  year         = {2024},
+  volume       = {3},
+  SERIES       = {Datenwissenschaftliche Studien},
+  address      = {München},
+  edition      = {2., überarbeitete und erweiterte Auflage},
+  month        = {März},
+  isbn         = {978-3-16-148410-0},
+  doi          = {10.1000/182},
+  url          = {https://www.technik-verlag.de/buecher/fortgeschrittene-datenanalyse},
+  note         = {Beinhaltet ein Kapitel über maschinelles Lernen},
+  abstract     = {Dieses Buch bietet eine umfassende Einführung in fortgeschrittene Methoden der Datenanalyse mit Python, einschließlich praxisnaher Anwendungen und Fallstudien.},
+  keywords     = {Datenanalyse, Python, maschinelles Lernen, Statistik},
+  language     = {Deutsch}
+}`
+
+	// Case 1: Complex entry, just checking if all fields have been found
+	expected1 := []string{"publisher", "author", "editor", "year", "title", "volume", "series", "address", "edition", "month", "isbn", "doi", "url", "note", "abstract", "keywords", "language"}
+	// Sort list for comparison
+	sort.Strings(expected1)
+
+	fields, err := parseFields(entry1)
+	// Collect field names
+	fieldNameList := make([]string, 0, 8)
+	for k := range fields {
+		fieldNameList = append(fieldNameList, k)
+	}
+	// Sort fieldnameList for comparison
+	sort.Strings(fieldNameList)
+
+	if !reflect.DeepEqual(expected1, fieldNameList) {
+		t.Errorf("Expected '%#v', but got '%#v'", expected1, fieldNameList)
+		t.Errorf("Error: %s", err.Error())
+	}
+
+	// Case 2: Simple bibliography
+	entry2 := `@book{schmidt2024,author = {Schmidt, Anna and Müller, Bernd and {O'Connor}, Claire and García, Diego},language = "Deutsch"}`
+	expected2 := map[string]string{"author": "Schmidt, Anna and Müller, Bernd and {O'Connor}, Claire and García, Diego", "language": "Deutsch"}
+
+	fields2, _ := parseFields(entry2)
+
+	if !reflect.DeepEqual(expected2, fields2) {
+		t.Errorf("Expected '%#v', but got '%#v'", expected2, fields2)
 	}
 }

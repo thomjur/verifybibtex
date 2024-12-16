@@ -8,6 +8,8 @@ package parser
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -29,9 +31,18 @@ func (e *ErrEmptyString) Error() string {
 	return fmt.Sprintf("Error processing a BibTeX entry: %s", e.Message)
 }
 
+// Debug logger
+var debugLog = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 // Package vars
-var regExRemoveWhiteSpace = regexp.MustCompile(`\s{2,}`)
-var regExRemoveComments = regexp.MustCompile(`(^|[^\\])%[^\n\r]*`)
+var regexRemoveWhiteSpace = regexp.MustCompile(`\s{2,}`)
+
+// Regex to remove comments in BibTeX entry starting with %
+// Should not remove escaped percentages like \%
+var regexRemoveComments = regexp.MustCompile(`(^|[^\\])%[^\n\r]*`)
+
+// Regex to find all valid field names
+var regexFindFieldNames = regexp.MustCompile(`([a-zA-Z\s]+)=(?:\s*[{"]+)`)
 
 // Entry represents a bibliographic entry in a BibTeX file.
 // It contains the type of the entry (e.g., article, book),
@@ -76,8 +87,12 @@ func ParseNewEntry(RawEntry string) (*Entry, error) {
 		return nil, err
 	}
 	newEntry.EntryType = entryType
+	// Parse fields
+	newEntry.Fields, err = parseFields(cleanEntry)
+	if err != nil {
+		debugLog.Println(err)
+	}
 	return newEntry, nil
-
 }
 
 // Helper functions
@@ -88,12 +103,12 @@ func cleanRawEntry(input string) string {
 	// Trim leading and trailing white spaces
 	trimmed := strings.TrimSpace(input)
 	// Remove % comments
-	oneLine := regExRemoveComments.ReplaceAllString(trimmed, "")
+	oneLine := regexRemoveComments.ReplaceAllString(trimmed, "")
 	// Remove line breaks, tabs, and carriage returns
 	replacer := strings.NewReplacer("\n", "", "\r", "", "\t", "")
 	oneLine = replacer.Replace(oneLine)
 	// Replace multiple white spaces with single white space
-	oneLine = regExRemoveWhiteSpace.ReplaceAllString(oneLine, " ")
+	oneLine = regexRemoveWhiteSpace.ReplaceAllString(oneLine, " ")
 	return oneLine
 }
 
@@ -117,8 +132,98 @@ func parseEntryType(bibtexEntry string) (string, error) {
 	if trimmedEntryType[0] != '@' {
 		return "", &ErrParsingEntry{Message: fmt.Sprintf("Cannot parse entry type from this entry: %s", bibtexEntry)}
 	}
-
 	return trimmedEntryType[1:], nil
+}
+
+// parseFields parses all fields from a clean (!) BibTeX entry.
+// For cleaning a BibTeX entry, see cleanRawEntry().
+func parseFields(cleanBibtexEntry string) (map[string]string, error) {
+	fieldsHashMap := make(map[string]string)
+	// Get the inner field first.
+	// Example: @article{id, author={Thomas Jurczy},...}
+	// Here, the inner field is id, author={Thomas Jurczy},...
+	_, innerField, found := strings.Cut(cleanBibtexEntry, "{")
+	if !found {
+		return nil, &ErrParsingEntry{Message: fmt.Sprintf("Could not split on '{': %s", cleanBibtexEntry)}
+	}
+	// Check if innerField is empty
+	innerField = strings.TrimSpace(innerField)
+	if len(innerField) == 0 {
+		return nil, &ErrEmptyString{Message: "The string is empty."}
+	}
+	// Remove trailing '}'
+	if innerField[len(innerField)-1] != '}' {
+		return nil, &ErrParsingEntry{Message: "The last char in fields list should be '}'."}
+	}
+	innerField = innerField[:len(innerField)-1]
+	// Trying to find all valid fields via their field name indices
+	matches := regexFindFieldNames.FindAllStringIndex(innerField, -1)
+	// Storing field information in list
+	// Difficult and needs better documentation
+	lastIndex := 0
+	previousFieldName := ""
+	// Iterating over all matches
+	for _, match := range matches {
+		// Add previous text as value for the field
+		if match[0] > lastIndex {
+			if previousFieldName != "" {
+				// Adding value to field
+				// Clean field value
+				v := innerField[lastIndex:match[0]]
+				v = strings.TrimSpace(v)
+				// Create []rune slice
+				vrunes := []rune(v)
+				// Check that v is not empty
+				if len(vrunes) == 0 {
+					continue
+				}
+				// Check if last char is ',' and remove if this is the case
+				if vrunes[len(vrunes)-1] == ',' {
+					vrunes = vrunes[:len(vrunes)-1]
+					vrunes = []rune(strings.TrimSpace(string(vrunes)))
+				}
+				// Remove trailing and leading '{}' or '""'
+				if (vrunes[0] == '"' && vrunes[len(vrunes)-1] == '"') || (vrunes[0] == '{' && vrunes[len(vrunes)-1] == '}') {
+					vrunes = vrunes[1 : len(vrunes)-1]
+				} else {
+					return nil, &ErrParsingEntry{Message: fmt.Sprintf(`The first and last char in field value should either be {} or "": %s`, v)}
+				}
+				fieldsHashMap[previousFieldName] = string(vrunes)
+			}
+		}
+		// Adding the field name as key to HashMap
+		// Clean field name
+		fieldName := innerField[match[0] : match[1]-1]
+		fieldName = strings.ReplaceAll(fieldName, "=", "")
+		fieldName = strings.TrimSpace(fieldName)
+		fieldName = strings.ToLower(fieldName)
+		if fieldName != "" {
+			fieldsHashMap[fieldName] = ""
+			previousFieldName = fieldName
+		}
+		lastIndex = match[1] - 1
+	}
+	// Add remaining value
+	if lastIndex < len(innerField) {
+		if previousFieldName != "" {
+			v := innerField[lastIndex:]
+			v = strings.TrimSpace(v)
+			vrunes := []rune(v)
+			if len(vrunes) > 0 {
+				if vrunes[len(vrunes)-1] == ',' {
+					vrunes = vrunes[:len(vrunes)-1]
+					vrunes = []rune(strings.TrimSpace(string(vrunes)))
+				}
+				if (vrunes[0] == '"' && vrunes[len(vrunes)-1] == '"') || (vrunes[0] == '{' && vrunes[len(vrunes)-1] == '}') {
+					vrunes = vrunes[1 : len(vrunes)-1]
+				} else {
+					return nil, &ErrParsingEntry{Message: fmt.Sprintf(`The first and last char in field value should either be {} or "": %s`, v)}
+				}
+				fieldsHashMap[previousFieldName] = string(vrunes)
+			}
+		}
+	}
+	return fieldsHashMap, nil
 }
 
 // safeGet retrieves the element at the specified index from the slice.
