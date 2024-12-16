@@ -44,6 +44,9 @@ var regexRemoveComments = regexp.MustCompile(`(^|[^\\])%[^\n\r]*`)
 // Regex to find all valid field names
 var regexFindFieldNames = regexp.MustCompile(`([a-zA-Z\s]+)=(?:\s*[{"]+)`)
 
+// Regex to find BibTeX entry ID
+var regexFindID = regexp.MustCompile(`(^|,)\s*[a-zA-Z-:_0-9]+\s*(,|$)`)
+
 // Entry represents a bibliographic entry in a BibTeX file.
 // It contains the type of the entry (e.g., article, book),
 // a unique key to identify the entry, the raw entry string,
@@ -89,6 +92,11 @@ func ParseNewEntry(RawEntry string) (*Entry, error) {
 	newEntry.EntryType = entryType
 	// Parse fields
 	newEntry.Fields, err = parseFields(cleanEntry)
+	if err != nil {
+		debugLog.Println(err)
+	}
+	// Parse ID
+	newEntry.Key, err = parseID(cleanEntry)
 	if err != nil {
 		debugLog.Println(err)
 	}
@@ -151,10 +159,11 @@ func parseFields(cleanBibtexEntry string) (map[string]string, error) {
 	if len(innerField) == 0 {
 		return nil, &ErrEmptyString{Message: "The string is empty."}
 	}
-	// Remove trailing '}'
+	// Verify trailing '}'
 	if innerField[len(innerField)-1] != '}' {
 		return nil, &ErrParsingEntry{Message: "The last char in fields list should be '}'."}
 	}
+	// Remove trailing '}'
 	innerField = innerField[:len(innerField)-1]
 	// Trying to find all valid fields via their field name indices
 	matches := regexFindFieldNames.FindAllStringIndex(innerField, -1)
@@ -224,6 +233,43 @@ func parseFields(cleanBibtexEntry string) (map[string]string, error) {
 		}
 	}
 	return fieldsHashMap, nil
+}
+
+// parseID searches for a BibTeX ID in a clean (!) BibTeX entry.
+// For cleaning a BibTeX entry, see cleanRawEntry().
+func parseID(cleanBibtexEntry string) (string, error) {
+	// Get the inner field first.
+	// Example: @article{id, author={Thomas Jurczy},...}
+	// Here, the inner field is id, author={Thomas Jurczy},...
+	_, innerField, found := strings.Cut(cleanBibtexEntry, "{")
+	if !found {
+		return "", &ErrParsingEntry{Message: fmt.Sprintf("Could not split on '{': %s", cleanBibtexEntry)}
+	}
+	// Check if innerField is empty
+	innerField = strings.TrimSpace(innerField)
+	if len(innerField) == 0 {
+		return "", &ErrEmptyString{Message: "The string is empty."}
+	}
+	// Verify trailing '}'
+	if innerField[len(innerField)-1] != '}' {
+		return "", &ErrParsingEntry{Message: "The last char in fields list should be '}'."}
+	}
+	// Remove trailing '}'
+	innerField = innerField[:len(innerField)-1]
+	id := regexFindID.FindString(innerField)
+	// Remove potential ',' in the beginning
+	if len(id) > 0 && id[0] == ',' {
+		id = id[1:]
+	}
+	// Remove potential ',' in the end
+	if len(id) > 0 && id[len(id)-1] == ',' {
+		id = id[:len(id)-1]
+	}
+	idTrimmed := strings.TrimSpace(id)
+	if idTrimmed == "" {
+		return "", &ErrParsingEntry{Message: "Could not find ID in BibTeX entry."}
+	}
+	return idTrimmed, nil
 }
 
 // safeGet retrieves the element at the specified index from the slice.

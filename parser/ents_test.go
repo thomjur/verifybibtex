@@ -151,4 +151,98 @@ func TestParseFields(t *testing.T) {
 	if !reflect.DeepEqual(expected2, fields2) {
 		t.Errorf("Expected '%#v', but got '%#v'", expected2, fields2)
 	}
+
+	// Case 3: Valid simple entry
+	entry3 := `@article{muster2024,
+  author  = {Max Mustermann},
+  title   = {Einführung in die Datenwissenschaft},
+  journal = {Journal für Informatik},
+  year    = {2024},
+  volume  = {42},
+  number  = {3},
+  pages   = {123--145}
+}
+`
+	expected3 := map[string]string{"author": "Max Mustermann", "title": "Einführung in die Datenwissenschaft", "journal": "Journal für Informatik", "year": "2024", "volume": "42", "number": "3", "pages": "123--145"}
+
+	fields3, _ := parseFields(entry3)
+
+	if !reflect.DeepEqual(expected3, fields3) {
+		t.Errorf("Expected '%#v', but got '%#v'", expected3, fields3)
+	}
+
+}
+
+func TestParseID(t *testing.T) {
+	// Case 1: Valid ID as it should be
+	entry1 := `@book{muster2024,
+	author  = {Max Mustermann},
+	title   = {Einführung in die Datenwissenschaft},
+	journal = {Journal für Informatik},
+	year    = {2024},
+	volume  = {42},
+	number  = {3},
+	pages   = {123--145}
+}
+  `
+	expected1 := "muster2024"
+
+	parsedIDString, err := parseID(entry1)
+
+	if err != nil {
+		debugLog.Println(err.Error())
+	}
+
+	if expected1 != parsedIDString {
+		t.Errorf("Expected '%#v', but got '%#v'", expected1, parsedIDString)
+	}
+
+	// Case 2: ID not in first position
+	entry2 := `@book{
+	author  = {Max Mustermann},
+	muster2024,
+	title   = {Einführung in die Datenwissenschaft},
+	journal = {Journal für Informatik},
+	year    = {2024},
+	volume  = {42},
+	number  = {3},
+	pages   = {123--145}
+ } 
+  `
+	expected2 := "muster2024"
+
+	parsedIDString2, err2 := parseID(entry2)
+
+	if err != nil {
+		debugLog.Println(err2.Error())
+	}
+
+	if expected2 != parsedIDString2 {
+		t.Errorf("Expected '%#v', but got '%#v'", expected2, parsedIDString2)
+	}
+
+	// Case 3: ID last position
+	entry3 := `@book{
+			author  = {Max Mustermann},
+			title   = {Einführung in die Datenwissenschaft},
+			journal = {Journal für Informatik},
+			year    = {2024},
+			volume  = {42},
+			number  = {3},
+			pages   = {123--145},
+			muster2024
+		 } 
+		  `
+	expected3 := "muster2024"
+
+	parsedIDString3, err3 := parseID(entry3)
+
+	if err != nil {
+		debugLog.Println(err3.Error())
+	}
+
+	if expected3 != parsedIDString3 {
+		t.Errorf("Expected '%#v', but got '%#v'", expected3, parsedIDString3)
+	}
+
 }

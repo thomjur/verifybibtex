@@ -38,8 +38,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	for k, v := range parsedEntry.Fields {
-		fmt.Println(k, "::", v)
-	}
+	fmt.Printf("%#v", parsedEntry)
 
 }
