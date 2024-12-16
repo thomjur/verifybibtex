@@ -33,6 +33,24 @@ func TestCleanRawEntry(t *testing.T) {
 	if result2 != expected2 {
 		t.Errorf("Expected '%s', but got '%s'", expected2, result2)
 	}
+	// Case 3: Removing comments
+	testCase3 := `% This is a comment
+	@article{id1234, % yet another comment!
+	% yet another comment
+	title={Drugs \% Comments}, % Remove this!!!!
+	author={Jurczyk, Thomas},
+	date={20.12.2023}
+
+	}
+	
+		
+	`
+	fmt.Printf("%s", testCase3)
+	result3 := cleanRawEntry(testCase3)
+	expected3 := `@article{id1234,title={Drugs \% Comments},author={Jurczyk, Thomas},date={20.12.2023}}`
+	if result3 != expected3 {
+		t.Errorf("Expected '%s', but got '%s'", expected3, result3)
+	}
 }
 
 func TestParseEntryType(t *testing.T) {

@@ -31,6 +31,7 @@ func (e *ErrEmptyString) Error() string {
 
 // Package vars
 var regExRemoveWhiteSpace = regexp.MustCompile(`\s{2,}`)
+var regExRemoveComments = regexp.MustCompile(`(^|[^\\])%[^\n\r]*`)
 
 // Entry represents a bibliographic entry in a BibTeX file.
 // It contains the type of the entry (e.g., article, book),
@@ -56,6 +57,7 @@ type BibTeXFile struct {
 // The expected format of the RawEntry string is a valid BibTeX entry, which includes the entry type,
 // a unique key, and a set of fields with their corresponding values. The function cleans the raw entry
 // by removing unnecessary white spaces and line breaks, and then checks if the cleaned entry is empty.
+// ParseNewEntry also gracefull removes TeX comments starting with % (also using % for comments in BibTeX should generally be avoided).
 // If the cleaned entry is not empty, it returns a new Entry struct with the raw entry string.
 func ParseNewEntry(RawEntry string) (*Entry, error) {
 	newEntry := &Entry{
@@ -85,9 +87,11 @@ func ParseNewEntry(RawEntry string) (*Entry, error) {
 func cleanRawEntry(input string) string {
 	// Trim leading and trailing white spaces
 	trimmed := strings.TrimSpace(input)
+	// Remove % comments
+	oneLine := regExRemoveComments.ReplaceAllString(trimmed, "")
 	// Remove line breaks, tabs, and carriage returns
 	replacer := strings.NewReplacer("\n", "", "\r", "", "\t", "")
-	oneLine := replacer.Replace(trimmed)
+	oneLine = replacer.Replace(oneLine)
 	// Replace multiple white spaces with single white space
 	oneLine = regExRemoveWhiteSpace.ReplaceAllString(oneLine, " ")
 	return oneLine
