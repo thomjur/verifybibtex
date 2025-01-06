@@ -3,11 +3,13 @@
 // Entry: struct to store information about a BibTeX entry
 //
 // Author: Thomas Jurczyk
-// Date: December 12, 2024
+// Date: January 6, 2025
 package parser
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
@@ -62,9 +64,66 @@ type Entry struct {
 // BibTeXFile represents a BibTeX file with its associated metadata.
 // It contains the file path, name, and a list of entries.
 type BibTeXFile struct {
-	FilePath string  // The file path of the BibTeX file.
-	Name     string  // The name of the BibTeX file.
-	Entries  []Entry // A slice of Entry structs representing the entries in the BibTeX file.
+	FilePath string   // The file path of the BibTeX file.
+	Entries  []*Entry // A slice of Entry structs representing the entries in the BibTeX file.
+}
+
+// ParseNewBibTeXFile takes a Reader object and tries to parse entries from it.
+func ParseNewBibTeXFile(r io.Reader) (*BibTeXFile, error) {
+	scanner := bufio.NewScanner(r)
+	// Creating a re to find the beginning of a BibTeX entry
+	re, err := regexp.Compile(`^\s*@`)
+	if err != nil {
+		return nil, err
+	}
+	bibtexFile := BibTeXFile{}
+	entryCounter := 1
+	var stringBuffer []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if re.MatchString(line) {
+			// Resetting stringBuffer
+			if len(stringBuffer) > 0 {
+				rawEntry := strings.Join(stringBuffer, " ")
+				fmt.Printf("%d. Entry: %s\n\n", entryCounter, rawEntry)
+				// Try to parse entry
+				entry, err := ParseNewEntry(rawEntry)
+				if err != nil {
+					fmt.Printf("Something went wrong when parsing entry no. %d\n", entryCounter)
+				} else {
+					bibtexFile.Entries = append(bibtexFile.Entries, entry)
+				}
+				stringBuffer = nil
+				entryCounter += 1
+			}
+			// Add line
+			stringBuffer = append(stringBuffer, line)
+			continue
+		}
+		// Add line if buffer is not empty
+		if len(stringBuffer) > 0 {
+			stringBuffer = append(stringBuffer, line)
+		}
+	}
+
+	// Check if there is a remaining entry in buffer
+	if len(stringBuffer) > 0 {
+		rawEntry := strings.Join(stringBuffer, " ")
+		fmt.Printf("%d. Entry: %s\n\n", entryCounter, rawEntry)
+		// Try to parse entry
+		entry, err := ParseNewEntry(rawEntry)
+		if err != nil {
+			fmt.Printf("Something went wrong when parsing entry no. %d\n", entryCounter)
+		} else {
+			bibtexFile.Entries = append(bibtexFile.Entries, entry)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, scanner.Err()
+	}
+
+	return &bibtexFile, nil
 }
 
 // ParseNewEntry parses a raw string in BibTeX format and tries to create an Entry struct.

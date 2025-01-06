@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -243,6 +244,69 @@ func TestParseID(t *testing.T) {
 
 	if expected3 != parsedIDString3 {
 		t.Errorf("Expected '%#v', but got '%#v'", expected3, parsedIDString3)
+	}
+}
+
+func TestParseBibTexFile(t *testing.T) {
+	bib := `
+	%Very useless stuff before entry that should not appear no where
+
+@book{knuth1997art,
+  author       = {Donald E. Knuth},
+  title        = {The Art of Computer Programming, Volume 1: Fundamental Algorithms},
+  year         = {1997},
+  publisher    = {Addison-Wesley},
+  edition      = {3rd},
+  address      = {Reading, Massachusetts},
+  isbn         = {978-0201896831}
+}
+
+       @article{smith2021ai,
+  author       = {John Smith and Alice Johnson},
+  title        = {Advancements in AI for Natural Language Processing},
+  journal      = {Journal of Artificial Intelligence Research},
+  year         = {2021},
+  volume       = {58},
+  number       = {3},
+  pages        = {123--145},
+  doi          = {10.1016/j.jair.2021.03.001}
+}
+
+@inproceedings{doe2022quantum,
+  author       = {Jane Doe and Richard Roe},
+  title        = {Exploring Quantum Computing for Cryptography},
+  booktitle    = {Proceedings of the 15th International Conference on Quantum Computing},
+  year         = {2022},
+  pages        = {45--52},
+  publisher    = {Springer},
+  address      = {Berlin, Germany},
+  doi          = {10.1007/978-3-030-12345-6_5}
+}
+
+@incollection{johnson2018neural,
+  author       = {Alice Johnson},
+  title        = {Neural Networks for Image Processing},
+  booktitle    = {Handbook of Machine Learning},
+  editor       = {Peter Brown and Sarah Davis},
+  year         = {2018},
+  pages        = {200--220},
+  publisher    = {CRC Press},
+  address      = {Boca Raton, FL},
+  isbn         = {978-1498734315}
+}
+
+	`
+
+	reader := strings.NewReader(bib)
+	parsedBibTeXFile, _ := ParseNewBibTeXFile(reader)
+	expectedEntryNumber := 4
+	if expectedEntryNumber != len(parsedBibTeXFile.Entries) {
+		t.Errorf("Expected '%#v', but got '%#v'", expectedEntryNumber, len(parsedBibTeXFile.Entries))
+	}
+	expectedEntryYear := "2018"
+	entryYear := parsedBibTeXFile.Entries[3].Fields["year"]
+	if expectedEntryYear != entryYear {
+		t.Errorf("Expected '%#v', but got '%#v'", expectedEntryYear, entryYear)
 	}
 
 }

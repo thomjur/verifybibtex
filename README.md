@@ -6,3 +6,11 @@ VerifyBibTeX-Go is CLI tool to verify the correctness of a BibTeX file. This inc
 ## Usage
 
 ## About
+
+## TODO
+
+- [x] Parser
+- []  Verifier 
+
+## Version
+2024-01-06
