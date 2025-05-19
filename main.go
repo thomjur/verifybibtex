@@ -15,10 +15,13 @@ func main() {
 		fmt.Println("Something went terribly wrong :-(")
 	}
 	defer file.Close()
-	bibtexFile, err2 := parser.ParseNewBibTeXFile(file)
-	if err2 != nil {
+
+	//Parse BibTeX file
+	bibtexFile, err := parser.ParseNewBibTeXFile(file)
+	if err != nil {
 		fmt.Println("Something went terribly wrong :-(")
 	}
+
 	// Don't forget to add filename afterwards
 	bibtexFile.FilePath = BibTeXFilePath
 

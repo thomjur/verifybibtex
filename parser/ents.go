@@ -3,7 +3,7 @@
 // Entry: struct to store information about a BibTeX entry
 //
 // Author: Thomas Jurczyk
-// Date: January 6, 2025
+// Date: May 5, 2025
 package parser
 
 import (
@@ -41,13 +41,15 @@ var regexRemoveWhiteSpace = regexp.MustCompile(`\s{2,}`)
 
 // Regex to remove comments in BibTeX entry starting with %
 // Should not remove escaped percentages like \%
-var regexRemoveComments = regexp.MustCompile(`(^|[^\\])%[^\n\r]*`)
+// We also assume that the there is a whitespace between % <COMMENT> to avoid
+// deleting parts of URLs
+var regexRemoveComments = regexp.MustCompile(`(^|[^\\])%\s[^\n\r]*`)
 
 // Regex to find all valid field names
 var regexFindFieldNames = regexp.MustCompile(`([a-zA-Z\s]+)=(?:\s*[{"]+)`)
 
 // Regex to find BibTeX entry ID
-var regexFindID = regexp.MustCompile(`(^|,)\s*[a-zA-Z-:_0-9]+\s*(,|$)`)
+var regexFindID = regexp.MustCompile(`(^|,)\s*[a-zA-Z.-:_0-9]+\s*(,|$)`)
 
 // Entry represents a bibliographic entry in a BibTeX file.
 // It contains the type of the entry (e.g., article, book),

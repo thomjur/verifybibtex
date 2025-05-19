@@ -1,4 +1,4 @@
-// Unittests for ents.go
+// Unit-tests for ents.go
 package parser
 
 import (
@@ -249,9 +249,9 @@ func TestParseID(t *testing.T) {
 
 func TestParseBibTexFile(t *testing.T) {
 	bib := `
-	%Very useless stuff before entry that should not appear no where
+	% Very useless stuff before entry that should not appear no where
 
-@book{knuth1997art,
+@book{knuth.1997art,
   author       = {Donald E. Knuth},
   title        = {The Art of Computer Programming, Volume 1: Fundamental Algorithms},
   year         = {1997},
@@ -308,5 +308,46 @@ func TestParseBibTexFile(t *testing.T) {
 	if expectedEntryYear != entryYear {
 		t.Errorf("Expected '%#v', but got '%#v'", expectedEntryYear, entryYear)
 	}
+	expectedID := "knuth.1997art"
+	entryID := parsedBibTeXFile.Entries[0].Key
+	if expectedID != entryID {
+		t.Errorf("Expected '%#v', but got '%#v'", expectedID, entryID)
+	}
+}
 
+func testParseURL(t *testing.T) {
+
+	bib := `
+	% Very useless stuff before entry that should not appear no where
+
+@book{knuth1997art,
+  author       = {Donald E. Knuth},
+  title        = {The Art of Computer Programming, Volume 1: Fundamental Algorithms},
+  year         = {1997},
+  publisher    = {Addison-Wesley},
+  edition      = {3rd},
+  address      = {Reading, Massachusetts},
+  isbn         = {978-0201896831}
+}
+
+       @article{smith2021ai,
+  author       = {John Smith and Alice Johnson},
+  title        = {Advancements in AI for Natural Language Processing},
+  journal      = {Journal of Artificial Intelligence Research},
+  year         = {2021},
+  volume       = {58},
+  number       = {3},
+  url          = {"https://example.com/path%20with%20percent"},
+  pages        = {123--145},
+  doi          = {10.1016/j.jair.2021.03.001}
+}
+
+  `
+	reader := strings.NewReader(bib)
+	parsedBibTeXFile, _ := ParseNewBibTeXFile(reader)
+	expextedURL := "https://example.com/path%20with%20percent"
+	entryURL := parsedBibTeXFile.Entries[1].Fields["url"]
+	if entryURL != expextedURL {
+		t.Errorf("Expected '%s', but got '%s'", expextedURL, entryURL)
+	}
 }
