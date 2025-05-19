@@ -87,7 +87,6 @@ func ParseNewBibTeXFile(r io.Reader) (*BibTeXFile, error) {
 			// Resetting stringBuffer
 			if len(stringBuffer) > 0 {
 				rawEntry := strings.Join(stringBuffer, " ")
-				fmt.Printf("%d. Entry: %s\n\n", entryCounter, rawEntry)
 				// Try to parse entry
 				entry, err := ParseNewEntry(rawEntry)
 				if err != nil {
@@ -111,7 +110,6 @@ func ParseNewBibTeXFile(r io.Reader) (*BibTeXFile, error) {
 	// Check if there is a remaining entry in buffer
 	if len(stringBuffer) > 0 {
 		rawEntry := strings.Join(stringBuffer, " ")
-		fmt.Printf("%d. Entry: %s\n\n", entryCounter, rawEntry)
 		// Try to parse entry
 		entry, err := ParseNewEntry(rawEntry)
 		if err != nil {
