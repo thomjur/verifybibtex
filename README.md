@@ -26,7 +26,7 @@ if err != nil {
 
 ```
 
-The `bibTeXFile` is a list of 
+The `bibTeXFile` is a list of `Entry` structs.
 
 ```go
 // Entry represents a bibliographic entry in a BibTeX file.
